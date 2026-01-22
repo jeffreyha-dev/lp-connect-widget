@@ -21,6 +21,7 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const initializedRef = useRef(false);
     const [isInitializing, setIsInitializing] = useState(true);
+    const [micPermissionStatus, setMicPermissionStatus] = useState<'unknown' | 'granted' | 'denied'>('unknown');
     const { valid: lpValid } = useLPTag(); // Hook to ensure we are connected to LP (optional dependency)
 
     useEffect(() => {
@@ -33,8 +34,51 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
         script.src = 'https://cdn.jsdelivr.net/npm/amazon-connect-streams@2.22.0/release/connect-streams-min.js';
         script.async = true;
 
-        script.onload = () => {
+        script.onload = async () => {
             console.log('Amazon Connect Streams library loaded');
+
+            // Request microphone access before CCP initialization
+            const requestMicrophoneAccess = async () => {
+                try {
+                    console.log('Requesting microphone access...');
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        audio: true
+                    });
+                    console.log('✅ Microphone access granted');
+                    setMicPermissionStatus('granted');
+                    // Keep stream alive briefly to maintain permission, then stop
+                    setTimeout(() => {
+                        stream.getTracks().forEach(track => track.stop());
+                    }, 1000);
+                    return true;
+                } catch (err: any) {
+                    console.error('❌ Microphone access denied:', err);
+                    setMicPermissionStatus('denied');
+
+                    // Provide specific error guidance
+                    if (err.name === 'NotAllowedError') {
+                        console.warn('⚠️ Browser blocked microphone access. This is likely due to:');
+                        console.warn('  1. Running in nested iframe (LivePerson widget)');
+                        console.warn('  2. Missing iframe allow attribute from parent');
+                        console.warn('  3. User denied permission');
+                    } else if (err.name === 'NotFoundError') {
+                        console.warn('⚠️ No microphone device found');
+                    } else if (err.name === 'NotReadableError') {
+                        console.warn('⚠️ Microphone is already in use by another application');
+                    }
+                    return false;
+                }
+            };
+
+            // Attempt to get microphone permission first
+            const micGranted = await requestMicrophoneAccess();
+            if (!micGranted) {
+                console.warn('⚠️ Microphone not granted - CCP voice features may not work');
+                console.warn('📋 Next steps:');
+                console.warn('  1. Contact LivePerson support to add iframe allow="microphone" attribute');
+                console.warn('  2. Ensure you\'re accessing via HTTPS (required for microphone API)');
+                console.warn('  3. Check browser permissions in Settings');
+            }
 
             // Initialize CCP after library loads
             try {
@@ -115,6 +159,26 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
                     <div className="flex flex-col items-center space-y-3">
                         <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                         <span className="text-xs text-blue-200/80 font-inter">Loading Softphone...</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Microphone Status Indicator */}
+            {micPermissionStatus === 'denied' && (
+                <div className="absolute top-16 left-0 right-0 mx-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-start space-x-2">
+                        <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div className="flex-1">
+                            <h4 className="text-xs font-semibold text-red-300 mb-1">Microphone Blocked</h4>
+                            <p className="text-[10px] text-red-200/80 leading-relaxed">
+                                Voice calls won't work. This is a browser security restriction for nested iframes.
+                            </p>
+                            <p className="text-[10px] text-red-200/60 mt-2">
+                                <strong>Solution:</strong> Contact LivePerson support to enable microphone permissions for this widget.
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

@@ -64,7 +64,12 @@ npm run build
 
 ## Known Limitations
 
-- **Microphone Access**: Requires LivePerson widget configuration to enable microphone permissions in nested iframes. See `FINAL_STATUS.md` for details.
+- **Microphone Access**: Browser security restricts microphone access in nested iframes. This widget now includes:
+  - ✅ Programmatic microphone permission request
+  - ✅ Enhanced HTTP headers (Permissions-Policy + Feature-Policy)
+  - ⚠️ May still require LivePerson iframe configuration
+  
+  See [`MICROPHONE_ACTIVATION.md`](./MICROPHONE_ACTIVATION.md) for implementation details and testing instructions.
 
 ## Documentation
 
