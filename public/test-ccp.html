@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CCP Test</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/amazon-connect-streams@2.22.0/release/connect-streams-min.js"></script>
+</head>
+<body>
+    <h1>Amazon Connect CCP Test</h1>
+    <div id="container-div" style="width: 400px; height: 800px; border: 1px solid #ccc;"></div>
+    
+    <script type="text/javascript">
+        var containerDiv = document.getElementById("container-div");
+        var instanceURL = "https://jeffreyha.my.connect.aws/ccp-v2/";
+        
+        console.log("Initializing CCP with URL:", instanceURL);
+        
+        connect.core.initCCP(containerDiv, {
+            ccpUrl: instanceURL,
+            loginPopup: true,
+            loginPopupAutoClose: true,
+            loginOptions: {
+                autoClose: true,
+                height: 600,
+                width: 400,
+                top: 0,
+                left: 0
+            },
+            region: "ap-southeast-1",
+            softphone: {
+                allowFramedSoftphone: true,
+                disableRingtone: false,
+                allowFramedVideoCall: true,
+                allowEarlyGum: true
+            },
+            pageOptions: {
+                enableAudioDeviceSettings: false,
+                enableVideoDeviceSettings: false,
+                enablePhoneTypeSettings: true
+            },
+            ccpAckTimeout: 5000,
+            ccpSynTimeout: 3000,
+            ccpLoadTimeout: 10000
+        });
+    </script>
+</body>
+</html>

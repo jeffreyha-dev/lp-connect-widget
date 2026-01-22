@@ -1,0 +1,84 @@
+# LivePerson + Amazon Connect Widget
+
+A Next.js widget that embeds Amazon Connect CCP (Contact Control Panel) within LivePerson Agent Workspace.
+
+## Features
+
+- ✅ Amazon Connect CCP embedded in LivePerson widget
+- ✅ Glassmorphic UI with premium design
+- ✅ Authentication handling with login popup
+- ✅ TypeScript support
+- ✅ Tailwind CSS styling
+
+## Prerequisites
+
+- Node.js 18+ 
+- Amazon Connect instance
+- LivePerson Agent Workspace access
+- AWS account with proper permissions
+
+## Setup
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Create `.env.local`:
+
+```bash
+NEXT_PUBLIC_CONNECT_INSTANCE_URL=https://your-instance.my.connect.aws/ccp-v2/
+NEXT_PUBLIC_CONNECT_REGION=your-region
+```
+
+### 3. AWS Configuration
+
+In AWS Console → Amazon Connect → Application Integration:
+
+Add these domains to **Approved Origins**:
+- Your deployment domain (e.g., `https://your-app.vercel.app`)
+- LivePerson domain: `https://ause1.le.liveperson.net` (adjust for your region)
+
+### 4. Run Development Server
+
+```bash
+npm run dev
+```
+
+## Deployment
+
+Deploy to Vercel, Netlify, or any hosting platform that supports Next.js.
+
+```bash
+npm run build
+```
+
+## LivePerson Integration
+
+1. In LivePerson Agent Workspace, create a new custom widget
+2. Set the widget URL to your deployed application
+3. Configure widget permissions (see `LIVEPERSON_SETUP.md`)
+
+## Known Limitations
+
+- **Microphone Access**: Requires LivePerson widget configuration to enable microphone permissions in nested iframes. See `FINAL_STATUS.md` for details.
+
+## Documentation
+
+- [`LIVEPERSON_SETUP.md`](./LIVEPERSON_SETUP.md) - LivePerson configuration guide
+- [`FINAL_STATUS.md`](./FINAL_STATUS.md) - Current status and limitations
+
+## Tech Stack
+
+- Next.js 16
+- TypeScript
+- Tailwind CSS
+- Amazon Connect Streams SDK
+- Framer Motion
+
+## License
+
+MIT
