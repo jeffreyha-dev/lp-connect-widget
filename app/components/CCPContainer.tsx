@@ -1,8 +1,8 @@
-"use client";
-
 import React, { useEffect, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy, Check } from 'lucide-react';
 import { useLPTag } from '../hooks/useLPTag';
+
+
 
 interface CCPContainerProps {
     instanceUrl: string; // The Amazon Connect instance URL (e.g., https://my-instance.my.connect.aws/ccp-v2/)
@@ -26,7 +26,11 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region, onMode
     const [micPermissionStatus, setMicPermissionStatus] = useState<'unknown' | 'granted' | 'denied'>('unknown');
     const [mode, setMode] = useState<'embedded' | 'popup'>('embedded');
     const [isPopupOpen, setIsPopupOpen] = useState(false);
-    const { valid: lpValid } = useLPTag(); // Hook to ensure we are connected to LP (optional dependency)
+    const [phoneNumber, setPhoneNumber] = useState<string>('+1 (555) 012-3456'); // Mock number for MVP
+    const [isCopied, setIsCopied] = useState(false);
+    const { valid: lpValid } = useLPTag();
+
+    // Hook to ensure we are connected to LP (optional dependency)
 
     // Function to open CCP in popup window
     const openCCPPopup = () => {
@@ -76,7 +80,82 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region, onMode
         };
     }, []);
 
+
+    // Helper to format numbers to E.164
+    const formatToE164 = (input: string): string => {
+        const trimmed = input.trim();
+        // If it's already in E.164 format (starts with +), just strip invalid chars but keep +
+        if (trimmed.startsWith('+')) {
+            const clean = trimmed.replace(/[^0-9+]/g, '');
+            return clean;
+        }
+
+        // If it's a standard number, strip non-digits
+        const clean = trimmed.replace(/\D/g, '');
+
+        // Custom logic for North American numbers (common use case)
+        if (clean.length === 10) {
+            return `+1${clean}`;
+        } else if (clean.length === 11 && clean.startsWith('1')) {
+            return `+${clean}`;
+        }
+
+        // Default: just prepend +
+        return `+${clean}`;
+    };
+
+    const handleBlur = () => {
+        if (!phoneNumber) return;
+        setPhoneNumber(formatToE164(phoneNumber));
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.currentTarget.blur();
+        }
+    };
+
+    const handleCopy = async () => {
+        if (!phoneNumber) return;
+
+        // Format before copying to ensure valid E.164 context
+        const formattedNumber = formatToE164(phoneNumber);
+
+        try {
+            await navigator.clipboard.writeText(formattedNumber);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+
+            // Also update the display to show what was copied
+            setPhoneNumber(formattedNumber);
+        } catch (err) {
+            console.warn('Clipboard API failed (expected in iframes), attempting fallback...');
+            // Fallback for restricted iframes
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = formattedNumber;
+                textArea.style.position = "fixed";  // Avoid scrolling to bottom
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                if (successful) {
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 2000);
+                    setPhoneNumber(formattedNumber);
+                } else {
+                    console.error('Fallback copy failed.');
+                }
+            } catch (fallbackErr) {
+                console.error('Fallback copy execution failed:', fallbackErr);
+            }
+        }
+    };
+
     useEffect(() => {
+
+
         if (typeof window === 'undefined' || !containerRef.current || initializedRef.current) return;
 
         initializedRef.current = true;
@@ -196,16 +275,34 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region, onMode
                     Amazon Connect
                 </h2>
                 <div className="flex items-center gap-3">
-                    {!isPopupOpen && (
+                    {/* Click-to-Call Button (MVP) */}
+                    {/* Click-to-Call Control Group */}
+                    <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-1.5 py-1">
+                        <input
+                            type="text"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
+                            className="bg-transparent border-none text-white text-xs w-28 px-1 focus:outline-none font-medium placeholder-white/20"
+                            placeholder="Enter Number"
+                        />
                         <button
-                            onClick={openCCPPopup}
-                            className="px-2 py-1 text-[10px] font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded border border-blue-500/50 transition-colors"
-                            title="Open CCP in popup for voice calls"
+                            onClick={handleCopy}
+                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors group"
+                            title="Copy to clipboard"
                         >
-                            🎤 Voice Mode
+                            {isCopied ? (
+                                <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                                <Copy className="w-3 h-3 text-white/60 group-hover:text-white" />
+                            )}
                         </button>
+                    </div>
+
+                    {!isPopupOpen && (
+                        <div className={`w-2 h-2 rounded-full ${isInitializing ? 'bg-yellow-400 animate-pulse' : isPopupOpen ? 'bg-green-400 animate-pulse' : 'bg-green-400'}`} />
                     )}
-                    <div className={`w-2 h-2 rounded-full ${isInitializing ? 'bg-yellow-400 animate-pulse' : isPopupOpen ? 'bg-green-400 animate-pulse' : 'bg-green-400'}`} />
                 </div>
             </div>
 

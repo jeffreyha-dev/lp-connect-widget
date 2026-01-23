@@ -15,11 +15,11 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Permissions-Policy',
-            value: 'microphone=(self "https://jeffreyha.my.connect.aws" "https://ause1.le.liveperson.net"), camera=(self "https://jeffreyha.my.connect.aws" "https://ause1.le.liveperson.net")'
+            value: 'microphone=(self "https://jeffreyha.my.connect.aws" "https://ause1.le.liveperson.net"), camera=(self "https://jeffreyha.my.connect.aws" "https://ause1.le.liveperson.net"), clipboard-write=(self "https://ause1.le.liveperson.net")'
           },
           {
             key: 'Feature-Policy',
-            value: 'microphone https://jeffreyha.my.connect.aws https://ause1.le.liveperson.net; camera https://jeffreyha.my.connect.aws https://ause1.le.liveperson.net'
+            value: 'microphone https://jeffreyha.my.connect.aws https://ause1.le.liveperson.net; camera https://jeffreyha.my.connect.aws https://ause1.le.liveperson.net; clipboard-write https://ause1.le.liveperson.net'
           }
         ]
       }
