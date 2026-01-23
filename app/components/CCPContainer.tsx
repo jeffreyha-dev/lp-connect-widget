@@ -7,6 +7,7 @@ import { useLPTag } from '../hooks/useLPTag';
 interface CCPContainerProps {
     instanceUrl: string; // The Amazon Connect instance URL (e.g., https://my-instance.my.connect.aws/ccp-v2/)
     region: string;      // AWS Region (e.g., us-west-2)
+    onModeChange?: (mode: 'embedded' | 'popup') => void; // Callback when mode changes
 }
 
 /**
@@ -17,12 +18,63 @@ interface CCPContainerProps {
  * - Glassmorphism container
  * - Full height for sidebar usage
  */
-const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
+const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region, onModeChange }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const initializedRef = useRef(false);
+    const popupWindowRef = useRef<Window | null>(null);
     const [isInitializing, setIsInitializing] = useState(true);
     const [micPermissionStatus, setMicPermissionStatus] = useState<'unknown' | 'granted' | 'denied'>('unknown');
+    const [mode, setMode] = useState<'embedded' | 'popup'>('embedded');
+    const [isPopupOpen, setIsPopupOpen] = useState(false);
     const { valid: lpValid } = useLPTag(); // Hook to ensure we are connected to LP (optional dependency)
+
+    // Function to open CCP in popup window
+    const openCCPPopup = () => {
+        if (popupWindowRef.current && !popupWindowRef.current.closed) {
+            popupWindowRef.current.focus();
+            return;
+        }
+
+        const width = 500;
+        const height = 700;
+        const left = window.screen.width - width - 50;
+        const top = 50;
+
+        const popup = window.open(
+            instanceUrl,
+            'AmazonConnectCCP',
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=yes`
+        );
+
+        if (popup) {
+            popupWindowRef.current = popup;
+            setIsPopupOpen(true);
+            setMode('popup');
+            onModeChange?.('popup');
+
+            // Monitor popup window
+            const checkPopup = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(checkPopup);
+                    setIsPopupOpen(false);
+                    setMode('embedded');
+                    onModeChange?.('embedded');
+                    popupWindowRef.current = null;
+                }
+            }, 1000);
+        } else {
+            alert('Popup blocked! Please allow popups for this site to use voice calling.');
+        }
+    };
+
+    // Cleanup popup on unmount
+    useEffect(() => {
+        return () => {
+            if (popupWindowRef.current && !popupWindowRef.current.closed) {
+                popupWindowRef.current.close();
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined' || !containerRef.current || initializedRef.current) return;
@@ -143,7 +195,18 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
                 <h2 className="text-sm font-medium text-white/90 tracking-wide font-inter">
                     Amazon Connect
                 </h2>
-                <div className={`w-2 h-2 rounded-full ${isInitializing ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`} />
+                <div className="flex items-center gap-3">
+                    {!isPopupOpen && (
+                        <button
+                            onClick={openCCPPopup}
+                            className="px-2 py-1 text-[10px] font-semibold bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded border border-blue-500/50 transition-colors"
+                            title="Open CCP in popup for voice calls"
+                        >
+                            🎤 Voice Mode
+                        </button>
+                    )}
+                    <div className={`w-2 h-2 rounded-full ${isInitializing ? 'bg-yellow-400 animate-pulse' : isPopupOpen ? 'bg-green-400 animate-pulse' : 'bg-green-400'}`} />
+                </div>
             </div>
 
             {/* CCP Iframe Container */}
@@ -164,7 +227,7 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
             )}
 
             {/* Microphone Status Indicator */}
-            {micPermissionStatus === 'denied' && (
+            {micPermissionStatus === 'denied' && !isPopupOpen && (
                 <div className="absolute top-16 left-0 right-0 mx-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg backdrop-blur-sm">
                     <div className="flex items-start space-x-2">
                         <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -173,10 +236,30 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region }) => {
                         <div className="flex-1">
                             <h4 className="text-xs font-semibold text-red-300 mb-1">Microphone Blocked</h4>
                             <p className="text-[10px] text-red-200/80 leading-relaxed">
-                                Voice calls won't work. This is a browser security restriction for nested iframes.
+                                Voice calls won't work in embedded mode due to browser security restrictions.
                             </p>
-                            <p className="text-[10px] text-red-200/60 mt-2">
-                                <strong>Solution:</strong> Contact LivePerson support to enable microphone permissions for this widget.
+                            <button
+                                onClick={openCCPPopup}
+                                className="mt-2 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-[10px] font-semibold rounded transition-colors"
+                            >
+                                🎤 Open in Popup for Voice Calls
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Popup Mode Indicator */}
+            {isPopupOpen && (
+                <div className="absolute top-16 left-0 right-0 mx-4 p-3 bg-green-500/20 border border-green-500/50 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-start space-x-2">
+                        <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="flex-1">
+                            <h4 className="text-xs font-semibold text-green-300 mb-1">CCP Running in Popup</h4>
+                            <p className="text-[10px] text-green-200/80 leading-relaxed">
+                                Voice calls are enabled. Check the popup window to manage calls.
                             </p>
                         </div>
                     </div>
