@@ -28,7 +28,8 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region, onMode
     const [isPopupOpen, setIsPopupOpen] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState<string>('+1 (555) 012-3456'); // Mock number for MVP
     const [isCopied, setIsCopied] = useState(false);
-    const { valid: lpValid } = useLPTag();
+    const [phoneDetected, setPhoneDetected] = useState(false); // Track if we found a real number
+    const { valid: lpValid, sdk } = useLPTag();
 
     // Hook to ensure we are connected to LP (optional dependency)
 
@@ -79,6 +80,101 @@ const CCPContainer: React.FC<CCPContainerProps> = ({ instanceUrl, region, onMode
             }
         };
     }, []);
+
+    // Level 1: Fetch phone number from LivePerson visitorInfo
+    useEffect(() => {
+        if (!lpValid || !sdk) return;
+
+        try {
+            // @ts-ignore - LP SDK types
+            sdk.get('visitorInfo', (data: any) => {
+                console.log('📞 [Level 1] visitorInfo data:', data);
+
+                // Try multiple possible phone number fields
+                const phoneCandidate =
+                    data?.phone ||
+                    data?.phoneNumber ||
+                    data?.cellPhoneNumber ||
+                    data?.mobilePhone ||
+                    data?.personalInfo?.phone;
+
+                if (phoneCandidate) {
+                    console.log('✅ [Level 1] Found phone in visitorInfo:', phoneCandidate);
+                    setPhoneNumber(formatToE164(phoneCandidate));
+                } else {
+                    console.log('⚠️ [Level 1] No phone found in visitorInfo, keeping mock number');
+                }
+            });
+        } catch (err) {
+            console.error('❌ [Level 1] Failed to fetch visitorInfo:', err);
+        }
+    }, [lpValid, sdk]);
+
+    // Level 2: Fetch phone number from LivePerson chatInfo (Pre-Chat Survey)
+    useEffect(() => {
+        if (!lpValid || !sdk || phoneDetected) return; // Skip if already found
+
+        try {
+            // @ts-ignore - LP SDK types
+            sdk.get('chatInfo', (data: any) => {
+                console.log('📞 [Level 2] chatInfo data:', data);
+
+                // Check for phone in survey responses or custom variables
+                const phoneCandidate =
+                    data?.phone ||
+                    data?.phoneNumber ||
+                    data?.rtSessionId?.phone ||
+                    data?.surveyQuestions?.find((q: any) =>
+                        q.question?.toLowerCase().includes('phone') ||
+                        q.question?.toLowerCase().includes('number')
+                    )?.answer;
+
+                if (phoneCandidate) {
+                    console.log('✅ [Level 2] Found phone in chatInfo:', phoneCandidate);
+                    setPhoneNumber(formatToE164(phoneCandidate));
+                    setPhoneDetected(true);
+                } else {
+                    console.log('⚠️ [Level 2] No phone found in chatInfo, will try Level 3');
+                }
+            });
+        } catch (err) {
+            console.error('❌ [Level 2] Failed to fetch chatInfo:', err);
+        }
+    }, [lpValid, sdk, phoneDetected]);
+
+    // Level 3: Scan transcript for phone numbers using regex
+    useEffect(() => {
+        if (!lpValid || !sdk || phoneDetected) return; // Skip if already found
+
+        try {
+            // Enhanced phone number regex pattern (matches international formats)
+            // Matches: +6581578063, (555) 123-4567, 555-123-4567, +1 555 123 4567, etc.
+            const phoneRegex = /(\+?\d{1,3}[-\.\s]?)?\(?\d{3,4}\)?[-\.\s]?\d{3,4}[-\.\s]?\d{4}/g;
+
+            // @ts-ignore - LP SDK types
+            sdk.bind('line', (line: any) => {
+                if (phoneDetected) return; // Stop if we already found one
+
+                console.log('📞 [Level 3] Scanning transcript lines:', lines);
+
+                // Scan all lines for phone numbers
+                for (const line of lines) {
+                    const text = line.text || '';
+                    const matches = text.match(phoneRegex);
+
+                    if (matches && matches.length > 0) {
+                        const foundNumber = matches[0];
+                        console.log('✅ [Level 3] Found phone in transcript:', foundNumber);
+                        setPhoneNumber(formatToE164(foundNumber));
+                        setPhoneDetected(true);
+                        break;
+                    }
+                }
+            });
+        } catch (err) {
+            console.error('❌ [Level 3] Failed to bind to transcript:', err);
+        }
+    }, [lpValid, sdk, phoneDetected]);
 
 
     // Helper to format numbers to E.164
