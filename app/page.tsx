@@ -13,8 +13,8 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between bg-black text-white">
-      <div className="w-full h-full min-h-screen flex">
+    <main className="flex h-screen overflow-hidden flex-col items-center justify-between bg-black text-white">
+      <div className="w-full h-full flex overflow-hidden">
         {/* 
            Sidebar Widget Area (Simulating LivePerson Widget dimensions)
            In production, this might be the only content, but for dev we center it or fill.
