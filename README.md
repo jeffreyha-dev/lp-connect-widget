@@ -50,7 +50,10 @@ npm run dev
 
 ## Deployment
 
-Deploy to Vercel, Netlify, or any hosting platform that supports Next.js.
+Deploy to Vercel, Netlify, AWS, or Google Cloud. See specific guides for details:
+
+- [AWS Deployment](./docs/02-AWS-DEPLOYMENT.md)
+- [GCP Deployment](./docs/04-GCP-DEPLOYMENT.md)
 
 ```bash
 npm run build
@@ -74,6 +77,9 @@ npm run build
 ## Documentation
 
 - [`LIVEPERSON_SETUP.md`](./LIVEPERSON_SETUP.md) - LivePerson configuration guide
+- [`02-AWS-DEPLOYMENT.md`](./docs/02-AWS-DEPLOYMENT.md) - AWS Deployment Guide
+- [`04-GCP-DEPLOYMENT.md`](./docs/04-GCP-DEPLOYMENT.md) - Google Cloud Deployment Guide
+- [`05-CUSTOM-WIDGET-CONNECTIVITY.md`](./docs/05-CUSTOM-WIDGET-CONNECTIVITY.md) - Connectivity & Data Guide
 - [`FINAL_STATUS.md`](./FINAL_STATUS.md) - Current status and limitations
 
 ## Tech Stack
